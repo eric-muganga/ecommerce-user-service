@@ -1,6 +1,8 @@
 package com.eric.ecommerce_user_service.controllers;
 
 import com.eric.ecommerce_user_service.Entities.User;
+import com.eric.ecommerce_user_service.exceptions.ResourceNotFoundException;
+import com.eric.ecommerce_user_service.exceptions.UserAlreadyExistsException;
 import com.eric.ecommerce_user_service.service.IUserService;
 
 import jakarta.validation.Valid;
@@ -30,7 +32,7 @@ public class UserController {
         if(userService.existsUserByUsername(user.getUsername()) ||
                 userService.existsUserByEmail(user.getEmail())) {
             log.warn("Username or email already exists: {}", user.getUsername());
-            return ResponseEntity.badRequest().build();
+            throw new UserAlreadyExistsException("Username or email already exists: " + user.getUsername());
         }
 
         User registeredUser = userService.registerUser(user);
@@ -44,9 +46,10 @@ public class UserController {
      */
     @GetMapping("/{username}")
     public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
-        Optional<User> user = userService.findUserByUsername(username);
+        User user = userService.findUserByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
 
-        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(user);
     }
 
 

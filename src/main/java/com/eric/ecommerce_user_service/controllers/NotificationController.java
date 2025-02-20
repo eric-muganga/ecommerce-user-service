@@ -2,6 +2,7 @@ package com.eric.ecommerce_user_service.controllers;
 
 import com.eric.ecommerce_user_service.Entities.Notification;
 import com.eric.ecommerce_user_service.Entities.User;
+import com.eric.ecommerce_user_service.exceptions.ResourceNotFoundException;
 import com.eric.ecommerce_user_service.repos.NotificationRepository;
 import com.eric.ecommerce_user_service.service.INotificationService;
 import com.eric.ecommerce_user_service.service.IUserService;
@@ -33,13 +34,10 @@ public class NotificationController {
     @PostMapping("/send/{username}")
     public ResponseEntity<Notification> sendNotification(@PathVariable("username") String username,
                                                          @Valid @RequestBody String message){
-        Optional<User> user = userService.findUserByUsername(username);
-        if(user.isEmpty()){
-            log.warn("User not found for sending notification: {}", username);
-            return ResponseEntity.notFound().build();
-        }
+        User user = userService.findUserByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for sending notification: " + username));
 
-        Notification notification = notificationService.sendNotification(user.get(), message);
+        Notification notification = notificationService.sendNotification(user, message);
         log.info("Notification sent to user {}: {}", username, notification);
         return ResponseEntity.ok(notification);
     }
@@ -49,14 +47,10 @@ public class NotificationController {
      */
     @GetMapping("/{username}")
     public ResponseEntity<List<Notification>> getUserNotifications(@PathVariable("username") String username){
-        Optional<User> user = userService.findUserByUsername(username);
+        User user = userService.findUserByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
 
-        if(user.isEmpty()){
-            log.warn("User not found with username: {}", username);
-            return ResponseEntity.notFound().build();
-        }
-
-        List<Notification> notifications = notificationService.getUserNotifications(user.get());
+        List<Notification> notifications = notificationService.getUserNotifications(user);
         return ResponseEntity.ok(notifications);
     }
 }
