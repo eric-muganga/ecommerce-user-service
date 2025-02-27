@@ -1,6 +1,7 @@
 package com.eric.ecommerce_user_service.controllers;
 
 import com.eric.ecommerce_user_service.Entities.User;
+import com.eric.ecommerce_user_service.auth.JwtUtil;
 import com.eric.ecommerce_user_service.exceptions.ResourceNotFoundException;
 import com.eric.ecommerce_user_service.exceptions.UnauthorizedException;
 import com.eric.ecommerce_user_service.exceptions.UserAlreadyExistsException;
@@ -9,6 +10,7 @@ import com.eric.ecommerce_user_service.service.IUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -22,14 +24,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/user")
 @Slf4j
 @Tag(name = "User Controller", description = "APIs for user management")
+@SecurityRequirement(name = "bearerAuth") // <==== All endpoints require JWT **except where overridden**
 public class UserController {
 
     private final IUserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    public UserController(@Qualifier("userServiceImpl") IUserService userService, PasswordEncoder passwordEncoder) {
+    public UserController(@Qualifier("userServiceImpl") IUserService userService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -41,6 +46,7 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Username or email already exists"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @SecurityRequirement(name = "")  // this **disables** JWT authentication for this method
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(@Valid @RequestBody User user) {
         if(userService.existsUserByUsername(user.getUsername()) ||
@@ -65,6 +71,7 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Login successful"),
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
+    @SecurityRequirement(name = "")  // this **disables** JWT authentication for this method
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@Valid @RequestBody User loginRequest) {
         User user = userService.findUserByUsername(loginRequest.getUsername())
