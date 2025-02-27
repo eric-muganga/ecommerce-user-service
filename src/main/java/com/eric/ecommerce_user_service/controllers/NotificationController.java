@@ -8,6 +8,7 @@ import com.eric.ecommerce_user_service.service.IUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.List;
 @RequestMapping("/api/notifications")
 @Slf4j
 @Tag(name = "Notification Controller", description = "APIs for managing notifications")
+@SecurityRequirement(name = "bearerAuth") // <==== All endpoints require JWT **except where overridden**
 public class NotificationController {
     private final INotificationService notificationService;
     private final IUserService userService;
