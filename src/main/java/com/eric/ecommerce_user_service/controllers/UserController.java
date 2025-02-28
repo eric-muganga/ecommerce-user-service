@@ -1,5 +1,7 @@
 package com.eric.ecommerce_user_service.controllers;
 
+import com.eric.ecommerce_user_service.DTO.LoginRequest;
+import com.eric.ecommerce_user_service.DTO.RegisterUserRequest;
 import com.eric.ecommerce_user_service.Entities.User;
 import com.eric.ecommerce_user_service.auth.JwtUtil;
 import com.eric.ecommerce_user_service.exceptions.ResourceNotFoundException;
@@ -18,6 +20,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 
 @RestController
@@ -48,18 +52,23 @@ public class UserController {
     })
     @SecurityRequirement(name = "")  // this **disables** JWT authentication for this method
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@Valid @RequestBody User user) {
-        if(userService.existsUserByUsername(user.getUsername()) ||
-                userService.existsUserByEmail(user.getEmail())) {
-            log.warn("Username or email already exists: {}", user.getUsername());
-            throw new UserAlreadyExistsException("Username or email already exists: " + user.getUsername());
+    public ResponseEntity<User> registerUser(@Valid @RequestBody RegisterUserRequest request) {
+        if(userService.existsUserByUsername(request.getUsername()) ||
+                userService.existsUserByEmail(request.getEmail())) {
+            log.warn("Username or email already exists: {}", request.getUsername());
+            throw new UserAlreadyExistsException("Username or email already exists: " + request.getUsername());
         }
 
+
+        User user = new User();
+        user.setUsername(request.getUsername());
         // Encode the password before saving
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(request.getPassword())); // Encrypt password
+        user.setEmail(request.getEmail());
 
         User registeredUser = userService.registerUser(user);
         log.info("Registered user successfully: {}", registeredUser.getUsername());
+
         return ResponseEntity.ok(registeredUser);
     }
 
@@ -73,7 +82,7 @@ public class UserController {
     })
     @SecurityRequirement(name = "")  // this **disables** JWT authentication for this method
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@Valid @RequestBody User loginRequest) {
+    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
         User user = userService.findUserByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + loginRequest.getUsername()));
 
@@ -83,7 +92,7 @@ public class UserController {
 
         String jwtToken = jwtUtil.generateToken(user.getUsername());
 
-        return ResponseEntity.ok("Bearer " + jwtToken);
+        return ResponseEntity.ok(Map.of("token", "Bearer " + jwtToken));
     }
 
     /**
