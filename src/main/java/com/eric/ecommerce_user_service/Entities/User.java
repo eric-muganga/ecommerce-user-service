@@ -28,7 +28,7 @@ public class User {
     private String email;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Notification> notifications; // One user can have many notifications
+    private List<Notification> notifications = new ArrayList<>(); // One user can have many notifications
 
     public User() {}
 

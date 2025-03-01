@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 
 
@@ -46,10 +47,10 @@ public class NotificationController {
     public ResponseEntity<Notification> sendNotification(@PathVariable("username") String username,
                                                          @Valid @RequestBody String message){
         User user = userService.findUserByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found for sending notification: " + username));
+                .orElseThrow(() -> new ResourceNotFoundException("User '" + username + "' not found, unable to send notification."));
 
         Notification notification = notificationService.sendNotification(user, message);
-        log.info("Notification sent to user {}: {}", username, notification);
+        log.info("Notification sent to {} at {}: {}", username, Instant.now(), message);
         return ResponseEntity.ok(notification);
     }
 
