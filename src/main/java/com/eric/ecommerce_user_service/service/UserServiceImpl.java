@@ -1,20 +1,28 @@
 package com.eric.ecommerce_user_service.service;
 
+import com.eric.ecommerce_user_service.Entities.Role;
+import com.eric.ecommerce_user_service.Entities.RoleName;
 import com.eric.ecommerce_user_service.Entities.User;
+import com.eric.ecommerce_user_service.repos.RoleRepository;
 import com.eric.ecommerce_user_service.repos.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UserServiceImpl implements IUserService {
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -42,5 +50,20 @@ public class UserServiceImpl implements IUserService {
     @Override
     public boolean existsUserByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Override
+    public User updateUserRoles(String username, Set<String> roleNames) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        // Fetch and validate roles
+        Set<Role> roles = roleNames.stream()
+                .map(roleName -> roleRepository.findByName(RoleName.valueOf(roleName.toUpperCase()))
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid role: " + roleName)))
+                .collect(Collectors.toSet());
+
+        user.setRoles(roles);
+        return userRepository.save(user);
     }
 }
