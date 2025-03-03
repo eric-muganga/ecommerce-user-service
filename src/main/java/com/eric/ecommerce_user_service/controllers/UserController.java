@@ -2,11 +2,15 @@ package com.eric.ecommerce_user_service.controllers;
 
 import com.eric.ecommerce_user_service.DTO.LoginRequest;
 import com.eric.ecommerce_user_service.DTO.RegisterUserRequest;
+import com.eric.ecommerce_user_service.DTO.UpdateUserRolesRequest;
+import com.eric.ecommerce_user_service.Entities.Role;
+import com.eric.ecommerce_user_service.Entities.RoleName;
 import com.eric.ecommerce_user_service.Entities.User;
 import com.eric.ecommerce_user_service.auth.JwtUtil;
 import com.eric.ecommerce_user_service.exceptions.ResourceNotFoundException;
 import com.eric.ecommerce_user_service.exceptions.UnauthorizedException;
 import com.eric.ecommerce_user_service.exceptions.UserAlreadyExistsException;
+import com.eric.ecommerce_user_service.repos.RoleRepository;
 import com.eric.ecommerce_user_service.service.IUserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,10 +22,13 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.*;
 
 
 @RestController
@@ -34,11 +41,13 @@ public class UserController {
     private final IUserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RoleRepository roleRepository;
 
-    public UserController(@Qualifier("userServiceImpl") IUserService userService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public UserController(@Qualifier("userServiceImpl") IUserService userService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, RoleRepository roleRepository) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.roleRepository = roleRepository;
     }
 
     /**
@@ -66,6 +75,23 @@ public class UserController {
         user.setPassword(passwordEncoder.encode(request.getPassword())); // Encrypt password
         user.setEmail(request.getEmail());
 
+        // Default role assignment
+        Set<Role> userRoles = new HashSet<>();
+        Role defaultRole = roleRepository.findByName(RoleName.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Default role not found"));
+        userRoles.add(defaultRole);
+
+        // Allow additional roles if provided
+        if (request.getRoles() != null) {
+            request.getRoles().forEach(roleStr -> {
+                Role role = roleRepository.findByName(RoleName.valueOf(roleStr.toUpperCase()))
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid role: " + roleStr));
+                userRoles.add(role);
+            });
+        }
+
+        user.setRoles(userRoles); // Assign roles to user
+
         User registeredUser = userService.registerUser(user);
         log.info("Registered user successfully: {}", registeredUser.getUsername());
 
@@ -90,9 +116,32 @@ public class UserController {
             throw new UnauthorizedException("Invalid username or password");
         }
 
-        String jwtToken = jwtUtil.generateToken(user.getUsername());
+        // Extract roles from user
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getName().name())
+                .toList();
+
+        String jwtToken = jwtUtil.generateToken(user.getUsername(), roles);
 
         return ResponseEntity.ok(Map.of("token", "Bearer " + jwtToken));
+    }
+
+    @Operation(summary = "Update User Roles", description = "Allow ADMIN to update user roles")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User roles updated successfully"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @PreAuthorize("hasRole('ADMIN')") // Ensure only ADMIN can access this endpoint
+    @PatchMapping("/{username}/roles")
+    public ResponseEntity<User> updateUserRoles(
+            @PathVariable String username,
+            @Valid @RequestBody UpdateUserRolesRequest request) {
+
+        User updatedUser = userService.updateUserRoles(username, request.getRoles());
+        log.info("Updated roles for user {}: {}", username, updatedUser.getRoles());
+
+        return ResponseEntity.ok(updatedUser);
     }
 
     /**
@@ -130,6 +179,12 @@ public class UserController {
     public ResponseEntity<Boolean> existsUserByEmail(@PathVariable String email) {
         boolean exists = userService.existsUserByEmail(email);
         return ResponseEntity.ok(exists);
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/profile")
+    public Optional<User> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
+        return userService.findUserByUsername(userDetails.getUsername());
     }
 
 }
