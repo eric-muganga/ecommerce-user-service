@@ -68,6 +68,7 @@ public class UserServiceImpl implements IUserService {
         return userRepository.save(user);
     }
 
+    @Override
     public UserProfileResponse getUserProfile(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
