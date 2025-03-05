@@ -3,6 +3,7 @@ package com.eric.ecommerce_user_service.controllers;
 import com.eric.ecommerce_user_service.DTO.LoginRequest;
 import com.eric.ecommerce_user_service.DTO.RegisterUserRequest;
 import com.eric.ecommerce_user_service.DTO.UpdateUserRolesRequest;
+import com.eric.ecommerce_user_service.DTO.UserProfileResponse;
 import com.eric.ecommerce_user_service.Entities.Role;
 import com.eric.ecommerce_user_service.Entities.RoleName;
 import com.eric.ecommerce_user_service.Entities.User;
@@ -142,6 +143,13 @@ public class UserController {
         log.info("Updated roles for user {}: {}", username, updatedUser.getRoles());
 
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<UserProfileResponse> getUserProfile(
+            @PathVariable String username) {
+        UserProfileResponse userProfile = userService.getUserProfile(username);
+        return ResponseEntity.ok(userProfile);
     }
 
     /**
