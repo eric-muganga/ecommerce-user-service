@@ -51,7 +51,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/api/user/**" // Allow your public endpoints
                         ).permitAll()
-                        .requestMatchers(HttpMethod.PATCH, "/api/user/{username}/roles").hasRole("ADMIN") // Only admins can update roles
+                        .requestMatchers(HttpMethod.PATCH, "/api/user/{username}/roles").hasRole("ROLE_ADMIN") // Only admins can update roles
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN") // ✅ Fix: Only admins can access admin routes
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception

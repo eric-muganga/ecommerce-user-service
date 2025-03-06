@@ -1,5 +1,6 @@
 package com.eric.ecommerce_user_service.service;
 
+import com.eric.ecommerce_user_service.DTO.UserProfileResponse;
 import com.eric.ecommerce_user_service.Entities.Role;
 import com.eric.ecommerce_user_service.Entities.RoleName;
 import com.eric.ecommerce_user_service.Entities.User;
@@ -65,5 +66,13 @@ public class UserServiceImpl implements IUserService {
 
         user.setRoles(roles);
         return userRepository.save(user);
+    }
+
+    @Override
+    public UserProfileResponse getUserProfile(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return new UserProfileResponse(user.getUsername(), user.getEmail(),
+                user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
     }
 }
